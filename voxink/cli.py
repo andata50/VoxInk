@@ -32,6 +32,8 @@ def main():
                         help="Only separate vocals, skip transcription")
     parser.add_argument("--lyrics", default=None,
                         help="Path to lyrics text file. Aligns provided lyrics to audio instead of transcribing.")
+    parser.add_argument("--word-level", action="store_true",
+                        help="Generate word-level LRC with per-word timestamps")
     parser.add_argument("--title", default=None, help="Song title for LRC metadata")
     parser.add_argument("--artist", default=None, help="Artist name for LRC metadata")
     parser.add_argument("-V", "--version", action="version", version=f"VoxInk {__version__}")
@@ -89,7 +91,7 @@ def main():
         metadata["artist"] = args.artist
 
     if args.format in ("lrc", "both"):
-        save_lrc(segments, str(output_base.with_suffix(".lrc")), metadata or None)
+        save_lrc(segments, str(output_base.with_suffix(".lrc")), metadata or None, word_level=args.word_level)
 
     if args.format in ("srt", "both"):
         save_srt(segments, str(output_base.with_suffix(".srt")))

@@ -98,7 +98,7 @@ def separate_vocals(audio_path: str, output_dir: str = None) -> Path:
     wav, sr = _load_audio(audio_path, ffmpeg_exe)
 
     print("Loading Demucs model...")
-    model = get_model("htdemucs")
+    model = get_model("htdemucs_ft")
     model.eval()
 
     # Demucs expects (batch, channels, samples) and specific sample rate

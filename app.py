@@ -19,6 +19,7 @@ def process_audio(
     model_size: str,
     output_format: str,
     skip_separation: bool,
+    word_level: bool,
     title: str,
     artist: str,
 ) -> tuple[str, str | None]:
@@ -61,7 +62,7 @@ def process_audio(
 
     # Generate text preview
     if output_format in ("LRC", "Both"):
-        preview = segments_to_lrc(segments, metadata or None)
+        preview = segments_to_lrc(segments, metadata or None, word_level=word_level)
     else:
         preview = segments_to_srt(segments)
 
@@ -71,7 +72,7 @@ def process_audio(
 
     if output_format in ("LRC", "Both"):
         lrc_path = output_dir / f"{stem}.lrc"
-        save_lrc(segments, str(lrc_path), metadata or None)
+        save_lrc(segments, str(lrc_path), metadata or None, word_level=word_level)
 
     if output_format in ("SRT", "Both"):
         srt_path = output_dir / f"{stem}.srt"
@@ -128,6 +129,10 @@ with gr.Blocks(title="VoxInk", theme=gr.themes.Soft()) as demo:
                 value=False,
                 label="Skip vocal separation (if audio is already vocals-only)",
             )
+            word_level = gr.Checkbox(
+                value=False,
+                label="Word-level timestamps (per-word timing in LRC)",
+            )
 
             with gr.Row():
                 title = gr.Textbox(label="Song Title (optional)", placeholder="e.g. Bis zum Schluss")
@@ -145,7 +150,7 @@ with gr.Blocks(title="VoxInk", theme=gr.themes.Soft()) as demo:
 
     submit_btn.click(
         fn=process_audio,
-        inputs=[audio_input, lyrics_input, language, model_size, output_format, skip_separation, title, artist],
+        inputs=[audio_input, lyrics_input, language, model_size, output_format, skip_separation, word_level, title, artist],
         outputs=[output_text, output_file],
     )
 
