@@ -1,9 +1,15 @@
 """VoxInk Web Interface - Gradio app for Hugging Face Spaces."""
 
+import os
 import tempfile
 from pathlib import Path
 
 import gradio as gr
+
+# Detect if running on HF Spaces with ZeroGPU
+IS_SPACES = os.environ.get("SPACE_ID") is not None
+if IS_SPACES:
+    import spaces
 
 from voxink.ffmpeg_utils import ensure_ffmpeg_in_path
 from voxink.separator import separate_vocals
@@ -12,7 +18,16 @@ from voxink.aligner import align_lyrics
 from voxink.converter import segments_to_lrc, segments_to_srt, save_lrc, save_srt
 
 
-def process_audio(
+def _get_device():
+    """Return 'cuda' if available, else 'cpu'."""
+    try:
+        import torch
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except ImportError:
+        return "cpu"
+
+
+def _process_audio_inner(
     audio_path: str,
     lyrics_text: str,
     language: str,
@@ -23,50 +38,42 @@ def process_audio(
     title: str,
     artist: str,
 ) -> tuple[str, str | None]:
-    """Process audio file and return lyrics + downloadable file."""
+    """Core processing logic."""
     if audio_path is None:
         return "Please upload an audio file.", None
 
     audio_path = Path(audio_path)
     lang = language if language != "Auto" else None
     has_lyrics = lyrics_text and lyrics_text.strip()
+    device = _get_device()
 
     # Step 1: Vocal separation
     if skip_separation:
         vocals_path = audio_path
-        yield "Skipping vocal separation...\n", None
     else:
-        yield "Step 1/3: Separating vocals (this may take a few minutes)...\n", None
-        vocals_path = separate_vocals(str(audio_path))
+        vocals_path = separate_vocals(str(audio_path), device=device)
 
     # Step 2: Transcribe or Align
     if has_lyrics:
-        yield "Step 2/3: Aligning provided lyrics to audio...\n", None
-        segments = align_lyrics(str(vocals_path), lyrics_text, language=lang, model_size=model_size)
+        segments = align_lyrics(str(vocals_path), lyrics_text, language=lang, model_size=model_size, device=device)
     else:
-        yield "Step 2/3: Transcribing lyrics...\n", None
-        segments = transcribe(str(vocals_path), language=lang, model_size=model_size)
+        segments = transcribe(str(vocals_path), language=lang, model_size=model_size, device=device)
 
     if not segments:
-        yield "No lyrics detected in the audio.", None
-        return
+        return "No lyrics detected in the audio.", None
 
     # Step 3: Generate output
-    yield "Step 3/3: Generating lyrics file...\n", None
-
     metadata = {}
     if title:
         metadata["title"] = title
     if artist:
         metadata["artist"] = artist
 
-    # Generate text preview
     if output_format in ("LRC", "Both"):
         preview = segments_to_lrc(segments, metadata or None, word_level=word_level)
     else:
         preview = segments_to_srt(segments)
 
-    # Save file(s)
     output_dir = Path(tempfile.mkdtemp())
     stem = audio_path.stem
 
@@ -78,13 +85,26 @@ def process_audio(
         srt_path = output_dir / f"{stem}.srt"
         save_srt(segments, str(srt_path))
 
-    # Return the primary file for download
     if output_format == "SRT":
         download_path = str(srt_path)
     else:
         download_path = str(lrc_path)
 
-    yield preview, download_path
+    return preview, download_path
+
+
+# Apply @spaces.GPU decorator only on HF Spaces
+if IS_SPACES:
+    @spaces.GPU
+    def process_audio(audio_path, lyrics_text, language, model_size, output_format,
+                      skip_separation, word_level, title, artist):
+        return _process_audio_inner(audio_path, lyrics_text, language, model_size,
+                                    output_format, skip_separation, word_level, title, artist)
+else:
+    def process_audio(audio_path, lyrics_text, language, model_size, output_format,
+                      skip_separation, word_level, title, artist):
+        return _process_audio_inner(audio_path, lyrics_text, language, model_size,
+                                    output_format, skip_separation, word_level, title, artist)
 
 
 LANGUAGES = [

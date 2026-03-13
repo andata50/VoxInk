@@ -69,7 +69,7 @@ def _load_audio(audio_path: Path, ffmpeg_exe: str | None) -> tuple[torch.Tensor,
     return torch.from_numpy(data), sr
 
 
-def separate_vocals(audio_path: str, output_dir: str = None) -> Path:
+def separate_vocals(audio_path: str, output_dir: str = None, device: str = "cpu") -> Path:
     """Separate vocals from background music using Demucs.
 
     Args:

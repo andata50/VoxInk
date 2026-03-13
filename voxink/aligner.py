@@ -10,10 +10,11 @@ from faster_whisper import WhisperModel
 
 # --- Whisper transcription ---
 
-def _get_whisper_segments(audio_path: str, language: str = None, model_size: str = "medium") -> list[dict]:
+def _get_whisper_segments(audio_path: str, language: str = None, model_size: str = "medium", device: str = "cpu") -> list[dict]:
     """Get segment-level and word-level timestamps from faster-whisper."""
-    print(f"Loading faster-whisper model: {model_size}")
-    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    compute_type = "float16" if device == "cuda" else "int8"
+    print(f"Loading faster-whisper model: {model_size} ({device})")
+    model = WhisperModel(model_size, device=device, compute_type=compute_type)
 
     print(f"Transcribing for alignment: {Path(audio_path).name}")
     kwargs = {"word_timestamps": True, "vad_filter": True}
@@ -258,6 +259,7 @@ def align_lyrics(
     lyrics_text: str,
     language: str = None,
     model_size: str = "medium",
+    device: str = "cpu",
 ) -> list[dict]:
     """Align provided lyrics to audio timestamps.
 
@@ -279,7 +281,7 @@ def align_lyrics(
     audio_path = str(audio_path)
 
     # Step A: Whisper transcription
-    whisper_segs = _get_whisper_segments(audio_path, language, model_size)
+    whisper_segs = _get_whisper_segments(audio_path, language, model_size, device)
 
     # Step B: Vocal onset detection
     print("Detecting vocal onsets...")

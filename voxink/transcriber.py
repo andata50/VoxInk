@@ -53,13 +53,14 @@ def _snap_to_onset(start: float, onsets: list[float], max_early: float = 1.0) ->
     return best
 
 
-def transcribe(audio_path: str, language: str = None, model_size: str = "medium") -> list[dict]:
+def transcribe(audio_path: str, language: str = None, model_size: str = "medium", device: str = "cpu") -> list[dict]:
     """Transcribe audio to text with timestamps using faster-whisper.
 
     Args:
         audio_path: Path to the audio file (preferably isolated vocals).
         language: Language code (e.g., "de", "en", "zh"). Auto-detected if None.
         model_size: Whisper model size: tiny, base, small, medium, large-v3.
+        device: "cpu" or "cuda".
 
     Returns:
         List of segments, each with 'start', 'end', and 'text' keys.
@@ -68,8 +69,9 @@ def transcribe(audio_path: str, language: str = None, model_size: str = "medium"
     if not audio_path.exists():
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-    print(f"Loading faster-whisper model: {model_size}")
-    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    compute_type = "float16" if device == "cuda" else "int8"
+    print(f"Loading faster-whisper model: {model_size} ({device})")
+    model = WhisperModel(model_size, device=device, compute_type=compute_type)
 
     print(f"Transcribing: {audio_path.name}")
     kwargs = {"word_timestamps": True, "vad_filter": True}
