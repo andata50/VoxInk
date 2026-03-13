@@ -1,8 +1,22 @@
+---
+title: VoxInk
+emoji: "\U0001F3B5"
+colorFrom: purple
+colorTo: blue
+sdk: gradio
+sdk_version: "5.0"
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # VoxInk
 
 > Extract timed lyrics from songs automatically.
 
 VoxInk separates vocals from music, transcribes the lyrics with timestamps, and generates LRC/SRT files — all in one command.
+
+**Try it online (no install needed):** [VoxInk on Hugging Face Spaces](https://huggingface.co/spaces/andata50/VoxInk)
 
 ## How it works
 
@@ -20,13 +34,13 @@ Audio File → [Demucs] → Isolated Vocals → [Whisper] → Timed Lyrics → .
 ### Install VoxInk
 
 ```bash
-pip install git+https://github.com/maysh/VoxInk.git
+pip install git+https://github.com/andata50/VoxInk.git
 ```
 
 Or clone and install locally:
 
 ```bash
-git clone https://github.com/maysh/VoxInk.git
+git clone https://github.com/andata50/VoxInk.git
 cd VoxInk
 pip install .
 ```

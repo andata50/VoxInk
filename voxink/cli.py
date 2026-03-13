@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from . import __version__
+from .ffmpeg_utils import ensure_ffmpeg_in_path
 from .separator import separate_vocals
 from .transcriber import transcribe
 from .converter import save_lrc, save_srt
@@ -29,6 +30,8 @@ def main():
                         help="Skip vocal separation, transcribe audio directly")
     parser.add_argument("--vocals-only", action="store_true",
                         help="Only separate vocals, skip transcription")
+    parser.add_argument("--lyrics", default=None,
+                        help="Path to lyrics text file. Aligns provided lyrics to audio instead of transcribing.")
     parser.add_argument("--title", default=None, help="Song title for LRC metadata")
     parser.add_argument("--artist", default=None, help="Artist name for LRC metadata")
     parser.add_argument("-V", "--version", action="version", version=f"VoxInk {__version__}")
@@ -39,6 +42,9 @@ def main():
     if not audio_path.exists():
         print(f"Error: File not found: {audio_path}")
         return 1
+
+    # Ensure ffmpeg is available
+    ensure_ffmpeg_in_path()
 
     # Step 1: Vocal separation
     if args.skip_separation:
@@ -52,9 +58,19 @@ def main():
         print("Done. Vocals separated.")
         return 0
 
-    # Step 2: Transcribe
-    print("\n=== Step 2: Transcribing lyrics ===")
-    segments = transcribe(str(vocals_path), language=args.language, model_size=args.model)
+    # Step 2: Transcribe or Align
+    if args.lyrics:
+        from .aligner import align_lyrics
+        lyrics_file = Path(args.lyrics)
+        if not lyrics_file.exists():
+            print(f"Error: Lyrics file not found: {lyrics_file}")
+            return 1
+        lyrics_text = lyrics_file.read_text(encoding="utf-8")
+        print("\n=== Step 2: Aligning lyrics to audio ===")
+        segments = align_lyrics(str(vocals_path), lyrics_text, language=args.language, model_size=args.model)
+    else:
+        print("\n=== Step 2: Transcribing lyrics ===")
+        segments = transcribe(str(vocals_path), language=args.language, model_size=args.model)
 
     if not segments:
         print("No lyrics detected.")
